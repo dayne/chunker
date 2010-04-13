@@ -104,8 +104,8 @@ File.open(target) do |file|
     chunk_size = options[:chunk] + options[:overlap]
     unless options[:end_offset].nil? 
       if (file.pos + chunk_size) > file_end
-	puts "Ending chunk at #{file_end} before the end of the file" if options[:verbose]
-	chunk_size = file_end - file.pos
+        puts "Ending chunk at #{file_end} before the end of the file" if options[:verbose]
+        chunk_size = file_end - file.pos
       end
     end
     out << file.read(chunk_size)
