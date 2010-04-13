@@ -1,0 +1,15 @@
+A simple tool to chunk up a file into multiple parts.
+
+Usage: chunker [options] target_file
+
+Specific options:
+    -v, --verbose                    Run verbosely
+    -c, --chunk-size=SIZE            Size of chunks to create. Default: 800 MB
+    -o, --overlap-size=SIZE          Overlap size for each chunk. Default 0 MB
+    -b, --begin-offset=OFFSET        Begin chunking the file after the specified OFFSET MBytes
+    -e, --end-offset=OFFSET          End chunking the file at OFFSET MBytes from the end of the file
+    -d, --destination=DIR            Directory to store the chunked files into
+
+Common options:
+    -h, --help                       Show this message
+        --version                    Show version
