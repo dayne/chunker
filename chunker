@@ -3,82 +3,83 @@
 require 'optparse'
 require 'yaml'
 
-copyright = "Copyright (C) 2008"
-license = ""
-options = {
-	:chunk => 1024*1024*800,
-	:overlap => 1024*1024*50,
-	:begin_at => nil,
-	:end_at => nil
-}
-
 KILO=1024
 MEGA=1024*KILO
 
+copyright = "Copyright (C) 2008"
+license = ""
+options = {
+  :chunk => 800*MEGA, 
+  :overlap => 50*MEGA,
+  :begin_at => nil,
+  :end_at => nil
+}
+
+
 OptionParser.new do |opts|
   $opts = opts
-	opts.version = [0, 0, 1]
-	opts.banner = "Usage: #{opts.program_name} [options] target_file"
-    opts.separator ""
-    opts.separator "Specific options:"
+  opts.version = [0, 0, 1]
+  opts.banner = "Usage: #{opts.program_name} [options] target_file"
+  opts.separator ""
+  opts.separator "Specific options:"
 	
-    opts.on("-v", "--verbose", "Run verbosely") do |v|
-      	options[:verbose] = v
-    end
+  opts.on("-v", "--verbose", "Run verbosely") do |v|
+    options[:verbose] = v
+  end
 
-	opts.on("-cSIZE", "--chunk-size=SIZE", Integer, "Size of chunks to create. Default: #{options[:chunk]/MEGA} MB") do |v|
-		options[:chunk] = v * MEGA
-	end
+  opts.on("-cSIZE", "--chunk-size=SIZE", Integer, "Size of chunks to create. Default: #{options[:chunk]/MEGA} MB") do |v|
+    options[:chunk] = v * MEGA
+  end
 
-	opts.on("-oSIZE", "--overlap-size=SIZE", Integer, "Overlap size for each chunk. Default #{options[:overlap]/MEGA} MB") do |v|
-		options[:overlap] = v * MEGA
-	end
+  opts.on("-oSIZE", "--overlap-size=SIZE", Integer, "Overlap size for each chunk. Default #{options[:overlap]/MEGA} MB") do |v|
+    options[:overlap] = v * MEGA
+  end
 
-	opts.on("-bOFFSET", "--begin-offset=OFFSET", Integer, "Begin chunking the file after the specified OFFSET MBytes") do |v|
-		options[:begin_offset] = v * MEGA
-	end
+  opts.on("-bOFFSET", "--begin-offset=OFFSET", Integer, "Begin chunking the file after the specified OFFSET MBytes") do |v|
+    options[:begin_offset] = v * MEGA
+  end
 
-	opts.on("-eOFFSET", "--end-offset=OFFSET", Integer, "End chunking the file at OFFSET MBytes from the end of the file") do |v|
-		options[:end_offset] = v * MEGA
-	end
+  opts.on("-eOFFSET", "--end-offset=OFFSET", Integer, "End chunking the file at OFFSET MBytes from the end of the file") do |v|
+    options[:end_offset] = v * MEGA
+  end
 # DOESN'T WORK
 #	opts.on("-n", "--no-chunk", "Do not create chunk files") do |v|
 #		options[:no_chunk] = v
 #	end
 
-	opts.on("-dDIR", "--destination=DIR", "Directory to store the chunked files into") do |v|
-		if File.exists?(v)
-			options[:destination] = v
-		else
-			puts "Error, could not find the destination directory.  Please ensure the directory exists before continuing"
-			exit
-		end
-	end
-
-    opts.separator ""
-    opts.separator "Common options:"
-
-    opts.on_tail("-h", "--help", "Show this message") do
-        puts opts
-        exit
+  opts.on("-dDIR", "--destination=DIR", "Directory to store the chunked files into") do |v|
+    if File.exists?(v)
+      options[:destination] = v
+    else
+      puts "Error, could not find the destination directory.  Please ensure the directory exists before continuing"
+      exit
     end
+  end
 
-    opts.on_tail("--version", "Show version") do
-        puts opts.ver()
-		puts copyright
-		puts license
-        exit
-    end
+  opts.separator ""
+  opts.separator "Common options:"
+
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
+
+  opts.on_tail("--version", "Show version") do
+    puts opts.ver()
+    puts copyright
+    puts license
+    exit
+  end
 end.parse!
 
-def boom(); puts $opts ; end
+def boom(); puts $opts ; exit; end
 target = ARGV.shift || boom
 count = 0
 
 if options[:verbose]
-	puts "dealing w/ : " + File.basename(target)
-	puts "chunk size = #{options[:chunk]}" if options[:no_chunk].nil?
-	puts "overlap size = #{options[:overlap]}" if options[:no_chunk].nil?
+  puts "dealing w/ : " + File.basename(target)
+  puts "chunk size = #{options[:chunk]}" if options[:no_chunk].nil?
+  puts "overlap size = #{options[:overlap]}" if options[:no_chunk].nil?
 end
 
 # Find the end of the file that we care about
@@ -90,40 +91,33 @@ options[:destination] = File.dirname(target) if options[:destination].nil?
 options[:chunk] = File.size(target) unless options[:no_chunk].nil?
 
 File.open(target) do |file|
-    unless options[:begin_offset].nil?
-        puts "Seeking to offset: #{options[:begin_offset]} in file" if options[:verbose]
-        file.pos = options[:begin_offset]
-    end
+  unless options[:begin_offset].nil?
+    puts "Seeking to offset: #{options[:begin_offset]} in file" if options[:verbose]
+    file.pos = options[:begin_offset]
+  end
 
-	while(file)
-		outfile = "#{options[:destination]}/#{File.basename(target)}.#{count}"
-
-		puts "starting #{outfile}" if options[:verbose]
-
-        out = File.open(outfile,"w")
+  while(file)
+    outfile = "#{options[:destination]}/#{File.basename(target)}.#{count}"
+    puts "starting #{outfile}" if options[:verbose]
+    out = File.open(outfile,"w")
 	
-		chunk_size = options[:chunk] + options[:overlap]
-		unless options[:end_offset].nil? 
-			if (file.pos + chunk_size) > file_end
-				puts "Ending chunk at #{file_end} before the end of the file" if options[:verbose]
-				chunk_size = file_end - file.pos
-			end
-		end
-
-        out << file.read(chunk_size)
-
-		if not file.eof? and file.pos < file_end
-        	file.pos=(file.pos-options[:overlap])
-
-	        count += 1
-    	    out.close
-        	puts "done w/ #{outfile}" if options[:verbose]
-		else
-			puts "End of file reached at #{count}" if options[:verbose]
-			out.close
-			exit
-		end
-	end
+    chunk_size = options[:chunk] + options[:overlap]
+    unless options[:end_offset].nil? 
+      if (file.pos + chunk_size) > file_end
+	puts "Ending chunk at #{file_end} before the end of the file" if options[:verbose]
+	chunk_size = file_end - file.pos
+      end
+    end
+    out << file.read(chunk_size)
+    if not file.eof? and file.pos < file_end
+      file.pos=(file.pos-options[:overlap])
+      count += 1
+      out.close
+      puts "done w/ #{outfile}" if options[:verbose]
+    else
+      puts "End of file reached at #{count}" if options[:verbose]
+      out.close
+      exit
+    end
+  end
 end
-
-
